@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 160" width="440" height="160">
+<g>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f5fe0"/><stop offset="1" stop-color="#f28c1b"/></linearGradient></defs>
+  <rect x="0" y="0" width="160" height="160" rx="36" fill="url(#g)"/>
+  <rect x="26" y="30" width="108" height="70" rx="10" fill="none" stroke="#fff" stroke-width="8"/>
+  <path d="M64 124h32M80 100v24" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
+  <text x="80" y="82" text-anchor="middle" font-family="Poppins" font-weight="700" font-size="46" fill="#fff">G</text>
+</g>
+<text x="184" y="70" font-family="Poppins" font-weight="700" font-size="52" fill="#0d1b33">Gupta</text>
+<text x="184" y="118" font-family="Poppins" font-weight="600" font-size="38" letter-spacing="1" fill="#f28c1b">Cyber Cafe</text>
+<text x="186" y="146" font-family="Poppins" font-weight="500" font-size="17" letter-spacing="5" fill="#53627c">SINCE 2014</text>
+</svg>
