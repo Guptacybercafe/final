@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Admin | Gupta Cyber Cafe</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="loginView" class="login" hidden>
+  <form class="card" id="loginForm">
+    <h1>Admin Login</h1>
+    <input type="password" id="pw" placeholder="Password" autocomplete="current-password" required autofocus>
+    <button class="btn primary" type="submit">Sign in</button>
+    <div id="loginMsg" class="bad"></div>
+  </form>
+</div>
+
+<div id="app" class="adm" hidden>
+  <header>
+    <h1>Print Admin</h1>
+    <span class="sp"></span>
+    <a class="btn sm" href="/">Website</a>
+    <button class="btn sm" id="logout">Sign out</button>
+  </header>
+  <div id="defBanner" class="banner" hidden>You are using the default password. Change it below.</div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>Print control</h3>
+      <label class="switch"><input type="checkbox" id="autoPrint"> Auto-print new uploads</label>
+      <p class="muted" style="margin:4px 0 12px;font-size:13px">On: files print the moment a customer uploads. Off: they wait in the queue until you press Print.</p>
+      <label class="switch"><input type="checkbox" id="accepting"> Accept new uploads</label>
+      <div class="row" style="margin-top:14px"><button class="btn sm" id="printAll">Print all queued / failed</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Colour printer</h3>
+      <label class="switch"><input type="checkbox" id="colorOn"> Enabled</label>
+      <div class="row"><select id="colorName"></select></div>
+      <div class="row"><label>Rs / page <input type="number" id="colorPrice" min="0" step="0.5" style="width:90px"></label><button class="btn sm" id="colorTest">Print test page</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Black &amp; White printer</h3>
+      <label class="switch"><input type="checkbox" id="bwOn"> Enabled</label>
+      <div class="row"><select id="bwName"></select></div>
+      <div class="row"><label>Rs / page <input type="number" id="bwPrice" min="0" step="0.5" style="width:90px"></label><button class="btn sm" id="bwTest">Print test page</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Change password</h3>
+      <div class="row"><input type="password" id="newPw" placeholder="New password (6+ chars)" autocomplete="new-password"><button class="btn sm" id="setPw">Save</button></div>
+    </div>
+  </div>
+
+  <div class="row"><button class="btn primary" id="saveAll">Save printer settings</button><span id="saveMsg"></span></div>
+
+  <h3>Jobs</h3>
+  <div class="tbl-wrap card" style="padding:0">
+    <table class="tbl">
+      <thead><tr><th>ID</th><th>Time</th><th>Customer</th><th>File</th><th>Type</th><th>Pages x Copies</th><th>Rs</th><th>Status</th><th></th></tr></thead>
+      <tbody id="jobs"></tbody>
+    </table>
+  </div>
+  <p class="muted" style="font-size:13px">Printed jobs and their files are deleted automatically after 3 days.</p>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>
