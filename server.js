@@ -138,6 +138,11 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Job posts page and its data. These two files stay in the repo root (the build only moves the listed site files into public/).
+// To add a job, edit job-posts.json and push. No code change needed.
+app.get('/jobs', (req, res) => res.sendFile(path.join(__dirname, 'jobs.html')));
+app.get('/job-posts.json', (req, res) => res.sendFile(path.join(__dirname, 'job-posts.json')));
+
 const ALLOWED = ['.pdf', '.jpg', '.jpeg', '.png'];
 const upload = multer({
   storage: multer.diskStorage({

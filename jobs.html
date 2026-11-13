@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Latest Jobs | Gupta Cyber Cafe</title>
+<meta name="description" content="Latest government and bank job notifications with last dates, posters and online application help from Gupta Cyber Cafe.">
+<link rel="icon" type="image/png" href="brand/favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap bar">
+    <a class="brand" href="/"><picture><source media="(prefers-color-scheme: dark)" srcset="brand/gc-mark-dark.png"><img src="brand/gc-mark-light.png" alt="" width="70" height="30" style="height:30px;width:auto;display:block"></picture><span>Gupta Cyber Cafe<small>Since 2014 &middot; Your Digital Service Partner</small></span></a>
+    <nav>
+      <a href="/#services">Services</a>
+      <a href="/jobs" aria-current="page">Jobs</a>
+      <a href="/#tools">Free Tools</a>
+      <a href="/#print">Print Online</a>
+      <a href="/#contact">Contact</a>
+    </nav>
+    <a class="btn wa" href="https://wa.me/919086703813" target="_blank" rel="noopener">WhatsApp</a>
+  </div>
+</header>
+
+<main class="sec">
+  <div class="wrap">
+    <h2>Latest Jobs</h2>
+    <p class="sub">Government and bank job notifications with last dates. Message us on WhatsApp and we will fill and submit your online application.</p>
+    <input id="jobSearch" class="search" type="search" placeholder="Search jobs, e.g. bank, graduate, Ladakh" aria-label="Search jobs">
+    <p id="jobStatus" class="muted" role="status"></p>
+    <div id="openJobs" class="job-list"></div>
+    <div id="closedWrap" hidden>
+      <h3 class="job-group">Closed</h3>
+      <div id="closedJobs" class="job-list"></div>
+    </div>
+    <p class="note">Gupta Cyber Cafe helps with online applications. Confirm eligibility and fees on the official notification before you apply.</p>
+  </div>
+</main>
+
+<footer><div class="wrap x-foot">
+  <div>&copy; <span id="yr"></span> Gupta Cyber Cafe &middot; Since 2014</div>
+  <div>WhatsApp: <a href="https://wa.me/919086703813" target="_blank" rel="noopener">9086703813</a><br><a href="/">Back to home</a></div>
+</div></footer>
+<a class="x-fab" href="https://wa.me/919086703813" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">💬</a>
+
+<script>
+(function () {
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+  var WA = 'https://wa.me/919086703813?text=';
+  // Last date is the end of that day in India time.
+  var daysLeft = function (last) {
+    var left = new Date(last + 'T23:59:59+05:30').getTime() - Date.now();
+    return { left: left, days: Math.ceil(left / 86400000) };
+  };
+  var stateOf = function (job) {
+    var d = daysLeft(job.lastDate);
+    if (d.left <= 0) return { text: 'Closed', cls: 'closed', closed: true };
+    if (d.days <= 1) return { text: 'Last day', cls: 'soon', closed: false };
+    return { text: d.days + ' days left', cls: d.days <= 7 ? 'soon' : 'open', closed: false };
+  };
+
+  var card = function (job) {
+    var st = stateOf(job);
+    var tags = (job.tags || []).map(function (t) { return '<span class="pill">' + esc(t) + '</span>'; }).join('');
+    var facts = (job.facts || []).map(function (f) {
+      return '<div><dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd></div>';
+    }).join('');
+    var faqs = (job.faqs || []).map(function (f) {
+      return '<details class="card"><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>';
+    }).join('');
+    var poster = job.poster
+      ? '<img src="' + esc(job.poster) + '" width="800" height="1100" loading="lazy" alt="Poster: ' + esc(job.title) + '">'
+      : '';
+    var official = job.officialUrl
+      ? '<a class="btn" href="' + esc(job.officialUrl) + '" target="_blank" rel="noopener">Official website</a>'
+      : '';
+    return '' +
+      '<article class="job card' + (st.closed ? ' closed' : '') + '" id="' + esc(job.id) + '" data-search="' +
+        esc([job.title, job.category, job.summary].concat(job.tags || []).join(' ').toLowerCase()) + '">' +
+        '<div class="job-poster">' + poster + '</div>' +
+        '<div class="job-body">' +
+          '<div class="job-tags">' + tags +
+            '<span class="pill job-state ' + st.cls + '">' + esc(st.text) + '</span></div>' +
+          '<h3>' + esc(job.title) + '</h3>' +
+          '<p class="muted">' + esc(job.summary) + '</p>' +
+          '<dl class="job-facts">' + facts + '</dl>' +
+          '<div class="cta">' +
+            '<a class="btn wa" href="' + WA + encodeURIComponent('Hello Gupta Cyber Cafe, I want to apply for ' + job.title) + '" target="_blank" rel="noopener">Apply via WhatsApp</a>' +
+            official +
+          '</div>' +
+          '<p class="muted job-contact">' + esc(job.applyNote || '') + '</p>' +
+          '<details class="job-more"><summary>Full details and FAQs</summary>' +
+            '<div class="x-faq">' + faqs + '</div>' +
+            (job.notice ? '<p class="note">' + esc(job.notice) + '</p>' : '') +
+          '</details>' +
+        '</div>' +
+      '</article>';
+  };
+
+  var jobs = [];
+  var openEl = document.getElementById('openJobs');
+  var closedEl = document.getElementById('closedJobs');
+  var closedWrap = document.getElementById('closedWrap');
+  var status = document.getElementById('jobStatus');
+  var search = document.getElementById('jobSearch');
+
+  var render = function () {
+    var q = search.value.trim().toLowerCase();
+    var shown = jobs.filter(function (j) { return !q || (j.title + ' ' + (j.summary || '') + ' ' + (j.tags || []).join(' ') + ' ' + (j.category || '')).toLowerCase().indexOf(q) !== -1; });
+    var open = shown.filter(function (j) { return !stateOf(j).closed; });
+    var closed = shown.filter(function (j) { return stateOf(j).closed; });
+    open.sort(function (a, b) { return a.lastDate < b.lastDate ? -1 : 1; });
+    closed.sort(function (a, b) { return a.lastDate < b.lastDate ? 1 : -1; });
+    openEl.innerHTML = open.map(card).join('');
+    closedEl.innerHTML = closed.map(card).join('');
+    closedWrap.hidden = closed.length === 0;
+    if (!shown.length) {
+      status.textContent = jobs.length ? 'No jobs match your search.' : 'No job posts right now. Check back soon, or message us on WhatsApp.';
+    } else {
+      status.textContent = open.length + ' open job' + (open.length === 1 ? '' : 's') + (closed.length ? ' · ' + closed.length + ' closed' : '');
+    }
+    openJumpFromHash();
+  };
+
+  // Deep link: /jobs#jkbank-2026 opens that post's details.
+  var openJumpFromHash = function () {
+    var id = decodeURIComponent(location.hash.slice(1));
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (!el) return;
+    var more = el.querySelector('.job-more');
+    if (more) more.open = true;
+    el.scrollIntoView({ block: 'start' });
+  };
+
+  search.addEventListener('input', render);
+
+  fetch('/job-posts.json', { cache: 'no-cache' })
+    .then(function (r) { if (!r.ok) throw new Error('load'); return r.json(); })
+    .then(function (data) { jobs = Array.isArray(data) ? data : []; render(); })
+    .catch(function () { status.textContent = 'Jobs could not be loaded. Please try again, or message us on WhatsApp.'; });
+})();
+</script>
+</body>
+</html>
