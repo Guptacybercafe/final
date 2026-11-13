@@ -76,7 +76,7 @@
       return '<details class="card"><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>';
     }).join('');
     var poster = job.poster
-      ? '<img src="' + esc(job.poster) + '" width="800" height="1100" loading="lazy" alt="Poster: ' + esc(job.title) + '">'
+      ? '<img src="' + esc(job.poster) + '" loading="lazy" alt="Poster: ' + esc(job.title) + '">'
       : '';
     var official = job.officialUrl
       ? '<a class="btn" href="' + esc(job.officialUrl) + '" target="_blank" rel="noopener">Official website</a>'
