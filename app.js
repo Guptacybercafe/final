@@ -47,4 +47,15 @@
     const r = await fetch('/api/job/' + encodeURIComponent(id)); const j = await r.json();
     out.textContent = r.ok ? `Job ${j.id}: ${j.status.toUpperCase()}` : 'Job not found';
   });
+
+  // ----- job posts: show days left or Closed from data-last (YYYY-MM-DD, India time) -----
+  document.querySelectorAll('.job[data-last]').forEach(el => {
+    const tag = el.querySelector('[data-state]');
+    if (!tag) return;
+    const left = new Date(el.dataset.last + 'T23:59:59+05:30').getTime() - Date.now();
+    const days = Math.ceil(left / 86400000);
+    if (left <= 0) { tag.textContent = 'Closed'; tag.classList.add('closed'); el.classList.add('closed'); }
+    else if (days <= 1) { tag.textContent = 'Last day'; tag.classList.add('soon'); }
+    else { tag.textContent = days + ' days left'; tag.classList.add(days <= 7 ? 'soon' : 'open'); }
+  });
 })();
