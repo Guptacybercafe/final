@@ -16,4 +16,20 @@
   renderServices();
   $('#svcSearch').addEventListener('input', e => renderServices(e.target.value));
 
+  // ----- visitor counter: counts once per browser session -----
+  const visitsEl = $('#visits');
+  if (visitsEl) {
+    let counted = false;
+    try { counted = sessionStorage.getItem('gcVisitCounted') === '1'; } catch (e) {}
+    const call = counted
+      ? fetch('/api/visits')
+      : fetch('/api/visits', { method: 'POST' }).then(r => {
+          try { sessionStorage.setItem('gcVisitCounted', '1'); } catch (e) {}
+          return r;
+        });
+    call.then(r => r.json())
+      .then(j => { visitsEl.textContent = 'Total visitors: ' + Number(j.total).toLocaleString('en-IN'); })
+      .catch(() => {});
+  }
+
 })();

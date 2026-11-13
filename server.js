@@ -155,6 +155,17 @@ const upload = multer({
 
 // public: settings visible to customers
 app.get('/healthz', (req, res) => res.send('ok'));
+
+// Visitor counter: one number, the count of home-page visits. No IP or personal data is stored.
+const VISITS_FILE = path.join(DATA, 'visits.json');
+let visitTotal = Number(readJSON(VISITS_FILE, { total: 0 }).total) || 0;
+let visitSaveTimer = null;
+const saveVisits = () => {
+  clearTimeout(visitSaveTimer);
+  visitSaveTimer = setTimeout(() => writeJSON(VISITS_FILE, { total: visitTotal }), 3000);
+};
+app.get('/api/visits', (req, res) => res.json({ total: visitTotal }));
+app.post('/api/visits', (req, res) => { visitTotal++; saveVisits(); res.json({ total: visitTotal }); });
 app.get('/api/public-info', (req, res) => res.json({
   accepting: settings.acceptingJobs,
   colorAvailable: settings.printers.color.enabled,
