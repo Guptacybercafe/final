@@ -25,6 +25,43 @@
     }
     return pdf.numPages;
   }
+  // Page list from text like "1-3, 5". Blank means every page.
+  function pagesOf(str, max) {
+    const s = (str || '').trim().toLowerCase();
+    const out = !s || s === 'all' ? Array.from({ length: max }, (_, i) => i + 1) : parseRanges(s, max);
+    if (!out.length) throw new Error('No valid pages. This PDF has ' + max + ' page(s).');
+    return out;
+  }
+  // Render every page, apply a colour filter, and rebuild as a new PDF (pages become images).
+  async function filterPdf(file, scale, q, filter, log) {
+    const out = await PDFLib.PDFDocument.create();
+    await renderPdf(file, scale, async (c, i, t, page) => {
+      log(`Page ${i} of ${t}`);
+      const x = c.getContext('2d');
+      if (filter === 'invert') { x.globalCompositeOperation = 'difference'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = 'source-over'; }
+      else {
+        const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+        for (let k = 0; k < p.length; k += 4) { let g = 0.299 * p[k] + 0.587 * p[k + 1] + 0.114 * p[k + 2]; if (filter === 'bw') g = g > 170 ? 255 : 0; p[k] = p[k + 1] = p[k + 2] = g; }
+        x.putImageData(d, 0, 0);
+      }
+      const img = await out.embedJpg(await (await toBlob(c, 'image/jpeg', q)).arrayBuffer()), vp = page.getViewport({ scale: 1 });
+      out.addPage([vp.width, vp.height]).drawImage(img, { x: 0, y: 0, width: vp.width, height: vp.height });
+      c.width = c.height = 0;
+    });
+    return new Blob([await out.save()], { type: 'application/pdf' });
+  }
+  // JPG at or under maxBytes: tries lower quality first, then shrinks the picture.
+  async function jpegUnder(img, maxBytes) {
+    let s = Math.min(1, 4096 / Math.max(img.naturalWidth, img.naturalHeight));
+    for (let t = 0; t < 14; t++) {
+      const c = drawToCanvas(img, Math.max(1, Math.round(img.naturalWidth * s)), Math.max(1, Math.round(img.naturalHeight * s)), '#fff');
+      let lo = 0.15, hi = 0.95, best = await toBlob(c, 'image/jpeg', lo);
+      if (best.size > maxBytes) { s *= 0.8; continue; }
+      for (let k = 0; k < 6; k++) { const m = (lo + hi) / 2, b = await toBlob(c, 'image/jpeg', m); if (b.size <= maxBytes) { best = b; lo = m; } else hi = m; }
+      return best;
+    }
+    throw new Error('Could not make the image that small. Try a larger size.');
+  }
   function parseRanges(str, max) {
     const out = [];
     for (const part of str.split(',')) {
@@ -93,6 +130,71 @@
         const b = new Blob([await out.save()], { type: 'application/pdf' });
         dl(b, base(files[0].name) + '-small.pdf'); return `${fmtKB(files[0].size)} became ${fmtKB(b.size)}. ` + (b.size >= files[0].size ? 'This file was already small; keep the original.' : 'Text is no longer selectable.');
       } },
+    { id: 'pdfinvert', title: 'Invert PDF', desc: 'Flip the colours: white pages turn black and black text turns white. Pages become images.', files: '.pdf,application/pdf', btn: 'Invert PDF', opts: [{ k: 'q', label: 'Quality', type: 'select', options: [['1.5', 'Standard'], ['1.1', 'Fast, smaller file'], ['2', 'Sharp, larger file']] }],
+      async run(files, o, log) {
+        const b = await filterPdf(files[0], +o.q, 0.85, 'invert', log); dl(b, base(files[0].name) + '-inverted.pdf');
+        return 'Inverted PDF created (' + fmtKB(b.size) + '). Text is no longer selectable.';
+      } },
+    { id: 'pdfgray', title: 'PDF to Black & White', desc: 'Make a coloured PDF grayscale or pure black and white, good for cheaper printing.', files: '.pdf,application/pdf', btn: 'Convert PDF', opts: [{ k: 'mode', label: 'Style', type: 'select', options: [['gray', 'Grayscale'], ['bw', 'Black and white only']] }, { k: 'q', label: 'Quality', type: 'select', options: [['1.5', 'Standard'], ['1.1', 'Fast, smaller file'], ['2', 'Sharp, larger file']] }],
+      async run(files, o, log) {
+        const b = await filterPdf(files[0], +o.q, 0.85, o.mode, log); dl(b, base(files[0].name) + '-bw.pdf');
+        return 'PDF created (' + fmtKB(b.size) + '). Text is no longer selectable.';
+      } },
+    { id: 'pdfrotate', title: 'Rotate PDF', desc: 'Fix sideways or upside-down pages.', files: '.pdf,application/pdf', btn: 'Rotate PDF', opts: [{ k: 'deg', label: 'Turn clockwise', type: 'select', options: [['90', '90°'], ['180', '180°'], ['270', '270°']] }, { k: 'range', label: 'Pages (blank for all, e.g. 2-4)', type: 'text', value: '' }],
+      async run(files, o) {
+        const d = await PDFLib.PDFDocument.load(await readBuf(files[0]), { ignoreEncryption: true }), pages = pagesOf(o.range, d.getPageCount());
+        pages.forEach(p => { const pg = d.getPage(p - 1); pg.setRotation(PDFLib.degrees((pg.getRotation().angle + +o.deg) % 360)); });
+        dl(new Blob([await d.save()], { type: 'application/pdf' }), base(files[0].name) + '-rotated.pdf'); return pages.length + ' page(s) rotated.';
+      } },
+    { id: 'pdfdelete', title: 'Delete PDF Pages', desc: 'Remove unwanted pages and keep the rest.', files: '.pdf,application/pdf', btn: 'Delete pages', opts: [{ k: 'range', label: 'Pages to delete (e.g. 2, 4-6)', type: 'text', value: '' }],
+      async run(files, o) {
+        if (!o.range.trim()) throw new Error('Type the pages to delete, like 2, 4-6.');
+        const d = await PDFLib.PDFDocument.load(await readBuf(files[0]), { ignoreEncryption: true }), n = d.getPageCount(), del = pagesOf(o.range, n), keep = [];
+        for (let i = 1; i <= n; i++) if (!del.includes(i)) keep.push(i - 1);
+        if (!keep.length) throw new Error('That would delete every page.');
+        const out = await PDFLib.PDFDocument.create(); (await out.copyPages(d, keep)).forEach(p => out.addPage(p));
+        dl(new Blob([await out.save()], { type: 'application/pdf' }), base(files[0].name) + '-trimmed.pdf'); return del.length + ' page(s) deleted, ' + keep.length + ' kept.';
+      } },
+    { id: 'pdfnumbers', title: 'Add Page Numbers', desc: 'Put page numbers at the bottom of every page.', files: '.pdf,application/pdf', btn: 'Add numbers', opts: [{ k: 'pos', label: 'Position', type: 'select', options: [['c', 'Bottom centre'], ['r', 'Bottom right'], ['l', 'Bottom left']] }, { k: 'style', label: 'Style', type: 'select', options: [['n', '1, 2, 3'], ['p', 'Page 1'], ['o', 'Page 1 of 10']] }, { k: 'start', label: 'Start from', type: 'number', value: 1 }],
+      async run(files, o) {
+        const d = await PDFLib.PDFDocument.load(await readBuf(files[0]), { ignoreEncryption: true }), font = await d.embedFont(PDFLib.StandardFonts.Helvetica), pages = d.getPages(), st = parseInt(o.start, 10) || 1;
+        pages.forEach((pg, i) => {
+          const num = i + st, t = o.style === 'n' ? String(num) : o.style === 'p' ? 'Page ' + num : `Page ${num} of ${pages.length + st - 1}`;
+          const w = font.widthOfTextAtSize(t, 10), W = pg.getWidth(), x = o.pos === 'l' ? 30 : o.pos === 'r' ? W - 30 - w : (W - w) / 2;
+          pg.drawText(t, { x, y: 20, size: 10, font, color: PDFLib.rgb(0.2, 0.2, 0.2) });
+        });
+        dl(new Blob([await d.save()], { type: 'application/pdf' }), base(files[0].name) + '-numbered.pdf'); return pages.length + ' page(s) numbered.';
+      } },
+    { id: 'pdfwatermark', title: 'Watermark PDF', desc: 'Stamp text like COPY or CONFIDENTIAL across every page.', files: '.pdf,application/pdf', btn: 'Add watermark', opts: [{ k: 'text', label: 'Watermark text', type: 'text', value: 'COPY' }, { k: 'color', label: 'Colour', type: 'select', options: [['g', 'Gray'], ['r', 'Red'], ['b', 'Blue']] }, { k: 'op', label: 'Strength', type: 'select', options: [['0.12', 'Light'], ['0.25', 'Medium'], ['0.45', 'Strong']] }, { k: 'ang', label: 'Direction', type: 'select', options: [['45', 'Diagonal'], ['0', 'Straight']] }],
+      async run(files, o) {
+        const text = o.text.trim(); if (!text) throw new Error('Type the watermark text.');
+        const d = await PDFLib.PDFDocument.load(await readBuf(files[0]), { ignoreEncryption: true }), font = await d.embedFont(PDFLib.StandardFonts.HelveticaBold), R = PDFLib.rgb;
+        const col = o.color === 'r' ? R(0.8, 0.1, 0.1) : o.color === 'b' ? R(0.1, 0.25, 0.8) : R(0.4, 0.4, 0.4), a = +o.ang, th = a * Math.PI / 180;
+        d.getPages().forEach(pg => {
+          const W = pg.getWidth(), H = pg.getHeight(), size = Math.min(110, Math.max(24, Math.min(W, H) * 0.9 / Math.max(text.length * 0.62, 3)));
+          const w = font.widthOfTextAtSize(text, size), h = size * 0.3;
+          pg.drawText(text, { x: W / 2 - (w / 2 * Math.cos(th) - h * Math.sin(th)), y: H / 2 - (w / 2 * Math.sin(th) + h * Math.cos(th)), size, font, color: col, opacity: +o.op, rotate: PDFLib.degrees(a) });
+        });
+        dl(new Blob([await d.save()], { type: 'application/pdf' }), base(files[0].name) + '-watermarked.pdf'); return 'Watermark added. Use English letters and numbers.';
+      } },
+    { id: 'pdf2txt', title: 'PDF to Text', desc: 'Pull all the text out of a PDF into a plain text file.', files: '.pdf,application/pdf', btn: 'Extract text', opts: [],
+      async run(files, o, log) {
+        const pdf = await pdfjsLib.getDocument({ data: await readBuf(files[0]) }).promise, all = [];
+        for (let p = 1; p <= pdf.numPages; p++) {
+          log(`Reading page ${p} of ${pdf.numPages}`);
+          const tc = await (await pdf.getPage(p)).getTextContent(), lines = []; let cur = [], y = null;
+          for (const it of tc.items) { const ty = Math.round(it.transform[5]); if (y !== null && Math.abs(ty - y) > 4) { lines.push(cur.join(' ')); cur = []; } cur.push(it.str); y = ty; }
+          if (cur.length) lines.push(cur.join(' ')); all.push(lines.filter(l => l.trim()).join('\n'));
+        }
+        const txt = all.join('\n\n'); if (txt.trim().length < 20) throw new Error('No selectable text found. This looks like a scanned PDF.');
+        dl(new Blob([txt], { type: 'text/plain' }), base(files[0].name) + '.txt'); return 'Text file created.';
+      } },
+    { id: 'imgkb', title: 'Compress Image to KB', desc: 'Shrink photos to fit a form limit like 50 KB or 200 KB.', files: 'image/*', multiple: true, btn: 'Compress', opts: [{ k: 'kb', label: 'Target size (KB)', type: 'number', value: 50 }],
+      async run(files, o, log) {
+        const kb = +o.kb; if (!(kb >= 5)) throw new Error('Enter a size of 5 KB or more.');
+        for (const f of files) { log('Compressing ' + f.name); const b = await jpegUnder(await loadImg(f), kb * 1024); dl(b, `${base(f.name)}-${kb}kb.jpg`); await new Promise(r => setTimeout(r, 250)); }
+        return files.length + ' file(s) compressed to ' + kb + ' KB or less.';
+      } },
     { id: 'imgconv', title: 'Image Converter', desc: 'JPG, PNG and WEBP in any direction.', files: 'image/*', multiple: true, opts: [{ k: 'to', label: 'Convert to', type: 'select', options: [['image/jpeg|jpg', 'JPG'], ['image/png|png', 'PNG'], ['image/webp|webp', 'WEBP']] }],
       async run(files, o, log) {
         const [mime, ext] = o.to.split('|');
@@ -130,7 +232,7 @@
       const val = op.value ?? '';
       form.insertAdjacentHTML('beforeend', `<label>${op.label}${op.type === 'select' ? `<select name="${op.k}">${op.options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>` : `<input name="${op.k}" type="${op.type}" value="${val}">`}</label>`);
     });
-    form.insertAdjacentHTML('beforeend', '<button class="btn primary" type="submit">Convert</button>');
+    form.insertAdjacentHTML('beforeend', `<button class="btn primary" type="submit">${t.btn || 'Convert'}</button>`);
     if (t.id === 'photo') form.preset.onchange = () => { if (form.preset.value) { const [w, h, k] = form.preset.value.split('|'); form.w.value = w; form.h.value = h; form.kb.value = k; } };
     form.onsubmit = async e => {
       e.preventDefault(); log.className = 'tlog'; log.textContent = 'Working...'; out.innerHTML = '';
@@ -139,7 +241,11 @@
         const files = form.f ? [...form.f.files] : []; if (t.files && !files.length) throw new Error('Select a file first.');
         const o = {}; t.opts.forEach(op => o[op.k] = form[op.k].value);
         const msg = await t.run(files, o, m => log.textContent = m, out); log.textContent = msg || ''; log.classList.add('ok');
-      } catch (err) { log.textContent = err.message || String(err); log.classList.add('bad'); }
+      } catch (err) {
+        const m = err.message || String(err);
+        log.textContent = err.name === 'PasswordException' || /encrypt|password/i.test(m) ? 'This PDF is protected with a password. Remove the password first, then try again.' : m;
+        log.classList.add('bad');
+      }
       btn.disabled = false;
     };
   }
