@@ -86,7 +86,7 @@
     // Share link only for posts that have a poster image.
     var share = job.poster
       ? '<div class="job-share">' +
-          '<button type="button" class="btn share-btn" data-share="' + esc(job.id) + '" data-title="' + esc(job.title) + '">Share</button>' +
+          '<button type="button" class="btn share-btn" data-share="' + esc(job.id) + '" data-title="' + esc(job.title) + '" data-poster="' + esc(job.poster) + '" data-last="' + esc(job.lastDate) + '">Share poster</button>' +
           '<a class="btn wa" href="' + WA + encodeURIComponent(job.title + ' - last date ' + job.lastDate + '\n' + shareUrl(job.id)) + '" target="_blank" rel="noopener">Share on WhatsApp</a>' +
           '<span class="share-msg muted" role="status"></span>' +
         '</div>'
@@ -174,10 +174,31 @@
     var title = btn.getAttribute('data-title');
     var msg = btn.parentNode.querySelector('.share-msg');
     var say = function (t) { if (msg) { msg.textContent = t; setTimeout(function () { msg.textContent = ''; }, 2500); } };
-    if (navigator.share) {
-      navigator.share({ title: title, text: title + ' - Gupta Cyber Cafe', url: url }).catch(function () {});
+    var text = title + ' - last date ' + btn.getAttribute('data-last') + '. Gupta Cyber Cafe';
+    var linkOnly = function () {
+      if (navigator.share) {
+        navigator.share({ title: title, text: text, url: url }).catch(function () {});
+      } else {
+        copyText(url).then(function () { say('Link copied'); }, function () { say(url); });
+      }
+    };
+    // Share the poster image together with the link where the browser allows files.
+    var poster = btn.getAttribute('data-poster');
+    if (poster && navigator.share && navigator.canShare && window.File) {
+      btn.disabled = true; say('Preparing poster...');
+      fetch(poster).then(function (r) { if (!r.ok) throw new Error('img'); return r.blob(); })
+        .then(function (blob) {
+          var ext = /png$/i.test(poster) ? 'png' : /jpe?g$/i.test(poster) ? 'jpg' : 'png';
+          var file = new File([blob], title.replace(/[^\w]+/g, '-').toLowerCase() + '.' + ext, { type: blob.type || 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            return navigator.share({ files: [file], title: title, text: text + '\n' + url });
+          }
+          linkOnly();
+        })
+        .catch(function (err) { if (!err || err.name !== 'AbortError') linkOnly(); })
+        .then(function () { btn.disabled = false; msg.textContent = ''; });
     } else {
-      copyText(url).then(function () { say('Link copied'); }, function () { say(url); });
+      linkOnly();
     }
   });
 
