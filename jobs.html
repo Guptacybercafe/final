@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<base href="/">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Latest Jobs | Gupta Cyber Cafe</title>
 <meta name="description" content="Latest government and bank job notifications with last dates, posters and online application help from Gupta Cyber Cafe.">
@@ -68,7 +69,7 @@
 
   // Link to a single post; the page opens it from the #id.
   var shareUrl = function (id) {
-    return location.origin + '/jobs#' + encodeURIComponent(id);
+    return location.origin + '/jobs/' + encodeURIComponent(id);
   };
 
   var card = function (job) {
@@ -143,9 +144,10 @@
     openJumpFromHash();
   };
 
-  // Deep link: /jobs#jkbank-2026 opens that post's details.
+  // Deep link: /jobs/jkbank-2026 (or /jobs#jkbank-2026) opens that post's details.
   var openJumpFromHash = function () {
-    var id = decodeURIComponent(location.hash.slice(1));
+    var m = location.pathname.match(/^\/jobs\/([^\/]+)/);
+    var id = decodeURIComponent(m ? m[1] : location.hash.slice(1));
     if (!id) return;
     var el = document.getElementById(id);
     if (!el) return;

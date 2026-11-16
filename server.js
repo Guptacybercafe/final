@@ -143,6 +143,39 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/jobs', (req, res) => res.sendFile(path.join(__dirname, 'jobs.html')));
 app.get('/job-posts.json', (req, res) => res.sendFile(path.join(__dirname, 'job-posts.json')));
 
+// Share link for one job: /jobs/<id>. Same page, but with Open Graph tags so WhatsApp, Facebook and
+// Telegram show the poster as the link preview. Preview image: og-<id>.jpg in the repo root (1200x630),
+// falling back to the poster itself.
+const escAttr = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const readJobPosts = () => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'job-posts.json'), 'utf8')); } catch (e) { return []; } };
+const ogImagePath = id => path.join(__dirname, 'og-' + String(id).replace(/[^\w-]/g, '') + '.jpg');
+app.get('/og/:id.jpg', (req, res) => {
+  const p = ogImagePath(req.params.id);
+  if (fs.existsSync(p)) return res.sendFile(p, { maxAge: '1h' });
+  const job = readJobPosts().find(j => j.id === req.params.id);
+  const poster = job && job.poster ? path.join(__dirname, 'public', path.normalize('/' + job.poster)) : '';
+  if (poster && fs.existsSync(poster)) return res.sendFile(poster, { maxAge: '1h' });
+  res.status(404).send('Not found');
+});
+app.get('/jobs/:id', (req, res) => {
+  const job = readJobPosts().find(j => j.id === req.params.id);
+  let html = fs.readFileSync(path.join(__dirname, 'jobs.html'), 'utf8');
+  if (job) {
+    const origin = req.protocol + '://' + req.get('host');
+    const url = origin + '/jobs/' + encodeURIComponent(job.id);
+    const title = job.title + ' | Gupta Cyber Cafe';
+    const desc = (job.summary || '') + (job.lastDate ? ' Last date: ' + job.lastDate + '.' : '');
+    const tags = [
+      ['og:type', 'article'], ['og:site_name', 'Gupta Cyber Cafe'], ['og:title', title], ['og:description', desc], ['og:url', url],
+      ...(job.poster ? [['og:image', origin + '/og/' + encodeURIComponent(job.id) + '.jpg'], ['og:image:width', '1200'], ['og:image:height', '630']] : [])
+    ].map(([k, v]) => '<meta property="' + k + '" content="' + escAttr(v) + '">').join('\n') +
+      '\n<meta name="twitter:card" content="summary_large_image">\n<link rel="canonical" href="' + escAttr(url) + '">';
+    html = html.replace(/<title>[\s\S]*?<\/title>/, '<title>' + escAttr(title) + '</title>')
+               .replace('</head>', tags + '\n</head>');
+  }
+  res.type('html').send(html);
+});
+
 const ALLOWED = ['.pdf', '.jpg', '.jpeg', '.png'];
 const upload = multer({
   storage: multer.diskStorage({
