@@ -127,6 +127,8 @@ footer{padding:24px 0;color:var(--mut);font-size:14px;border-top:1px solid var(-
 .job-facts{margin:14px 0;display:grid;border-top:1px solid var(--line)}
 .job-facts div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
 .job-facts dt{color:var(--mut)}.job-facts dd{margin:0}
+.job-share{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.job-share .share-msg{font-size:14px}
 .job-contact{margin:12px 0 0;font-size:14px}
 .job-more{margin-top:16px}.job-more>summary{cursor:pointer;font-weight:600;color:var(--pri)}
 .job-state:empty{display:none}

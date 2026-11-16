@@ -66,6 +66,11 @@
     return { text: d.days + ' days left', cls: d.days <= 7 ? 'soon' : 'open', closed: false };
   };
 
+  // Link to a single post; the page opens it from the #id.
+  var shareUrl = function (id) {
+    return location.origin + '/jobs#' + encodeURIComponent(id);
+  };
+
   var card = function (job) {
     var st = stateOf(job);
     var tags = (job.tags || []).map(function (t) { return '<span class="pill">' + esc(t) + '</span>'; }).join('');
@@ -77,6 +82,14 @@
     }).join('');
     var poster = job.poster
       ? '<img src="' + esc(job.poster) + '" loading="lazy" alt="Poster: ' + esc(job.title) + '">'
+      : '';
+    // Share link only for posts that have a poster image.
+    var share = job.poster
+      ? '<div class="job-share">' +
+          '<button type="button" class="btn share-btn" data-share="' + esc(job.id) + '" data-title="' + esc(job.title) + '">Share</button>' +
+          '<a class="btn wa" href="' + WA + encodeURIComponent(job.title + ' - last date ' + job.lastDate + '\n' + shareUrl(job.id)) + '" target="_blank" rel="noopener">Share on WhatsApp</a>' +
+          '<span class="share-msg muted" role="status"></span>' +
+        '</div>'
       : '';
     var official = job.officialUrl
       ? '<a class="btn" href="' + esc(job.officialUrl) + '" target="_blank" rel="noopener">Official website</a>'
@@ -95,6 +108,7 @@
             '<a class="btn wa" href="' + WA + encodeURIComponent('Hello Gupta Cyber Cafe, I want to apply for ' + job.title) + '" target="_blank" rel="noopener">Apply via WhatsApp</a>' +
             official +
           '</div>' +
+          share +
           '<p class="muted job-contact">' + esc(job.applyNote || '') + '</p>' +
           '<details class="job-more"><summary>Full details and FAQs</summary>' +
             '<div class="x-faq">' + faqs + '</div>' +
@@ -141,6 +155,31 @@
   };
 
   search.addEventListener('input', render);
+
+  // Share button: phone share sheet where supported, otherwise copy the link.
+  var copyText = function (text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy') ? resolve() : reject(new Error('copy')); } catch (e) { reject(e); }
+      document.body.removeChild(ta);
+    });
+  };
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('.share-btn');
+    if (!btn) return;
+    var url = shareUrl(btn.getAttribute('data-share'));
+    var title = btn.getAttribute('data-title');
+    var msg = btn.parentNode.querySelector('.share-msg');
+    var say = function (t) { if (msg) { msg.textContent = t; setTimeout(function () { msg.textContent = ''; }, 2500); } };
+    if (navigator.share) {
+      navigator.share({ title: title, text: title + ' - Gupta Cyber Cafe', url: url }).catch(function () {});
+    } else {
+      copyText(url).then(function () { say('Link copied'); }, function () { say(url); });
+    }
+  });
 
   fetch('/job-posts.json', { cache: 'no-cache' })
     .then(function (r) { if (!r.ok) throw new Error('load'); return r.json(); })
