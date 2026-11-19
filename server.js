@@ -414,3 +414,20 @@ app.use((err, req, res, next) => res.status(400).json({ error: err.code === 'LIM
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\nGupta Cyber Cafe running:\n  Website : http://localhost:${PORT}\n  Admin   : http://localhost:${PORT}/admin.html  (default password: admin123 - change it!)\n`);
 });
+
+// Server check for the free Render plan: Render puts a free service to sleep after 15 minutes without
+// outside traffic. While the server is awake it calls its own public /healthz every 10 minutes, so it
+// stays awake. An outside pinger (GitHub Actions + a free uptime monitor) wakes it if it ever sleeps.
+const SELF_URL = process.env.RENDER_EXTERNAL_URL || process.env.KEEP_AWAKE_URL || '';
+if (SELF_URL && typeof fetch === 'function') {
+  const selfPing = async () => {
+    try {
+      const r = await fetch(SELF_URL.replace(/\/+$/, '') + '/healthz', { signal: AbortSignal.timeout(30000) });
+      if (!r.ok) console.warn('[server check] /healthz returned', r.status);
+    } catch (e) {
+      console.warn('[server check] ping failed:', e.message);
+    }
+  };
+  setInterval(selfPing, 10 * 60 * 1000);
+  setTimeout(selfPing, 60 * 1000);
+}
