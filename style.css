@@ -121,6 +121,7 @@ footer{padding:24px 0;color:var(--mut);font-size:14px;border-top:1px solid var(-
 /* ---- jobs ---- */
 .job-list{display:grid;gap:16px;margin-top:18px}
 .job{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:22px;align-items:start}
+.job.result{display:block}
 .job-poster img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--line)}
 .job-tags{display:flex;flex-wrap:wrap;gap:6px}
 .job-body h3{margin:12px 0 4px;font-size:22px}.job-body>p{margin:0}

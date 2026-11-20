@@ -30,6 +30,11 @@
     <p class="sub">Government and bank job notifications with last dates. Message us on WhatsApp and we will fill and submit your online application.</p>
     <input id="jobSearch" class="search" type="search" placeholder="Search jobs, e.g. bank, graduate, Ladakh" aria-label="Search jobs">
     <p id="jobStatus" class="muted" role="status"></p>
+    <div id="resultsWrap" hidden>
+      <h3 class="job-group">Latest Results</h3>
+      <div id="resultJobs" class="job-list"></div>
+    </div>
+    <h3 class="job-group" id="openHead" hidden>Open Jobs</h3>
     <div id="openJobs" class="job-list"></div>
     <div id="closedWrap" hidden>
       <h3 class="job-group">Closed</h3>
@@ -119,16 +124,45 @@
       '</article>';
   };
 
+  // Result posts (type "result"): no last date or poster, just the facts and a Check Result button.
+  var resultCard = function (job) {
+    var tags = (job.tags || []).map(function (t) { return '<span class="pill">' + esc(t) + '</span>'; }).join('');
+    var facts = (job.facts || []).map(function (f) {
+      return '<div><dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd></div>';
+    }).join('');
+    var btns = '';
+    if (job.resultUrl) btns += '<a class="btn" href="' + esc(job.resultUrl) + '" target="_blank" rel="noopener">Check result</a>';
+    if (job.officialUrl) btns += '<a class="btn" href="' + esc(job.officialUrl) + '" target="_blank" rel="noopener">Official website</a>';
+    btns += '<a class="btn wa" href="' + WA + encodeURIComponent('Hello Gupta Cyber Cafe, I need help with ' + job.title) + '" target="_blank" rel="noopener">Ask on WhatsApp</a>';
+    return '' +
+      '<article class="job card result" id="' + esc(job.id) + '" data-search="' +
+        esc([job.title, job.category, job.summary].concat(job.tags || []).join(' ').toLowerCase()) + '">' +
+        '<div class="job-body">' +
+          '<div class="job-tags">' + tags + '<span class="pill job-state open">Result out</span></div>' +
+          '<h3>' + esc(job.title) + '</h3>' +
+          '<p class="muted">' + esc(job.summary) + '</p>' +
+          '<dl class="job-facts">' + facts + '</dl>' +
+          '<div class="cta">' + btns + '</div>' +
+          (job.notice ? '<p class="note">' + esc(job.notice) + '</p>' : '') +
+        '</div>' +
+      '</article>';
+  };
+
   var jobs = [];
   var openEl = document.getElementById('openJobs');
   var closedEl = document.getElementById('closedJobs');
   var closedWrap = document.getElementById('closedWrap');
+  var resultsWrap = document.getElementById('resultsWrap');
+  var resultEl = document.getElementById('resultJobs');
   var status = document.getElementById('jobStatus');
   var search = document.getElementById('jobSearch');
 
   var render = function () {
     var q = search.value.trim().toLowerCase();
     var shown = jobs.filter(function (j) { return !q || (j.title + ' ' + (j.summary || '') + ' ' + (j.tags || []).join(' ') + ' ' + (j.category || '')).toLowerCase().indexOf(q) !== -1; });
+    var results = shown.filter(function (j) { return j.type === 'result'; });
+    shown = shown.filter(function (j) { return j.type !== 'result'; });
+    results.sort(function (a, b) { return (a.resultDate || '') < (b.resultDate || '') ? 1 : -1; });
     var open = shown.filter(function (j) { return !stateOf(j).closed; });
     var closed = shown.filter(function (j) { return stateOf(j).closed; });
     open.sort(function (a, b) { return a.lastDate < b.lastDate ? -1 : 1; });
@@ -136,7 +170,10 @@
     openEl.innerHTML = open.map(card).join('');
     closedEl.innerHTML = closed.map(card).join('');
     closedWrap.hidden = closed.length === 0;
-    if (!shown.length) {
+    resultEl.innerHTML = results.map(resultCard).join('');
+    resultsWrap.hidden = results.length === 0;
+    document.getElementById('openHead').hidden = results.length === 0 || open.length === 0;
+    if (!shown.length && !results.length) {
       status.textContent = jobs.length ? 'No jobs match your search.' : 'No job posts right now. Check back soon, or message us on WhatsApp.';
     } else {
       status.textContent = open.length + ' open job' + (open.length === 1 ? '' : 's') + (closed.length ? ' · ' + closed.length + ' closed' : '');

@@ -660,5 +660,52 @@
     "officialUrl": "https://afcat.edcil.co.in/",
     "applyNote": "Apply at Gupta Cyber Cafe. WhatsApp: 9086703813 or 8825096033",
     "notice": "Details are taken from news reports of the AFCAT 01/2027 notification and may change. Some sites report 296 posts. Confirm vacancies, branch eligibility and the application website on the official notification before you apply."
+  },
+  {
+    "id": "ibps-po-mains-result-2026",
+    "type": "result",
+    "title": "IBPS PO / MT Mains Result 2026",
+    "category": "Banking",
+    "resultDate": "2026-11-20",
+    "lastDate": "2026-11-20",
+    "summary": "IBPS CRP PO/MT-XVI Mains result for Probationary Officer / Management Trainee posts in participating public sector banks.",
+    "tags": [
+      "Result",
+      "Banking",
+      "IBPS"
+    ],
+    "facts": [
+      [
+        "Post",
+        "Probationary Officer / Management Trainee"
+      ],
+      [
+        "Vacancies",
+        "7,565 posts"
+      ],
+      [
+        "Exam",
+        "Mains examination"
+      ],
+      [
+        "Exam date",
+        "4 October 2026"
+      ],
+      [
+        "Result date",
+        "20 November 2026"
+      ],
+      [
+        "Next stage",
+        "Personality Test and Interview"
+      ],
+      [
+        "How to check",
+        "Open ibps.in, go to the CRP PO/MT section, open the result link, enter registration or roll number and password or date of birth, and submit"
+      ]
+    ],
+    "resultUrl": "https://www.freejobalert.com/articles/ibps-po-mains-result-2026-3081498",
+    "officialUrl": "https://www.ibps.in/",
+    "notice": "Result link and details are from a job-alert site. Check the result and the interview schedule on the official IBPS website, ibps.in. Keep your registration number and password ready."
   }
 ]
